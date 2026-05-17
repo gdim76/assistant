@@ -1,0 +1,55 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local configuration
+local.properties
+
+# Kotlin
+*.kotlin_module
+*.kts
+
+# Android Studio
+.idea/
+*.iml
+.gradle/
+/captures/
+.externalNativeBuild/
+.cxx/
+
+# Log files
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Android
+*.apk
+*.ap_
+*.aab
+*.keystore
+*.jks
+
+# JetBrains
+.idea/*
+!.idea/vcs.xml
+!.idea/inspectionProfiles
+
+# Proguard
+proguard/**
+
+# Generated files
+*.orig
+*.hprof
+
+# IntelliJ
+out/
+
+# NDK
+obj/
+
+# Misc
+*.swp
+*~
