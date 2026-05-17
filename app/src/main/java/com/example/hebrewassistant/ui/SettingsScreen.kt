@@ -11,6 +11,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,6 +39,7 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     val settingsState by settingsRepository.settingsFlow.collectAsState(initial = LlmSettings())
     var provider by remember { mutableStateOf(settingsState.provider) }
     var apiKey by remember { mutableStateOf(settingsState.apiKey) }
@@ -45,55 +49,64 @@ fun SettingsScreen(
         apiKey = settingsState.apiKey
     }
 
-    Column(
-        modifier = Modifier
-            .padding(16.dp)
-            .fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(text = "Настройки LLM")
-            TextButton(onClick = onBack) {
-                Text(text = "Назад")
-            }
-        }
-
-        Text(text = "Выберите провайдера")
-
-        LlmProvider.values().forEach { option ->
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                RadioButton(
-                    selected = option == provider,
-                    onClick = { provider = option }
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(text = option.name)
-            }
-        }
-
-        OutlinedTextField(
-            value = apiKey,
-            onValueChange = { apiKey = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(text = "API ключ") },
-            placeholder = { Text(text = "Введите ключ для выбранного провайдера") }
-        )
-
-        Button(
-            onClick = {
-                coroutineScope.launch {
-                    settingsRepository.updateSettings(provider, apiKey)
-                    onBack()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = "Настройки LLM")
+                TextButton(onClick = onBack) {
+                    Text(text = "Назад")
                 }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "Сохранить")
-        }
+            }
 
-        Text(text = "Gemini: используйте ваш Google API ключ. OpenAI: используйте ваш ключ OpenAI.")
+            Text(text = "Выберите провайдера")
+
+            LlmProvider.values().forEach { option ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = option == provider,
+                        onClick = { provider = option }
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = option.name)
+                }
+            }
+
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = { apiKey = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(text = "API ключ") },
+                placeholder = { Text(text = "Введите ключ для выбранного провайдера") }
+            )
+
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        settingsRepository.updateSettings(provider, apiKey)
+                        snackbarHostState.showSnackbar("Настройки сохранены")
+                        onBack()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Сохранить")
+            }
+
+            Text(text = "Gemini: используйте ваш Google API ключ. OpenAI: используйте ваш ключ OpenAI.")
+        }
     }
 }

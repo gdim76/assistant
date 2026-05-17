@@ -14,6 +14,12 @@ data class LlmResponse(
     val output: String
 )
 
+class LlmRequestException(
+    message: String,
+    val statusCode: Int? = null,
+    cause: Throwable? = null
+) : RuntimeException(message, cause)
+
 class MockLlmService : LlmService {
     override suspend fun requestCompletion(request: LlmRequest): LlmResponse {
         val answer = "Урок по ивриту для темы: ${request.prompt.take(80)}...\n" +

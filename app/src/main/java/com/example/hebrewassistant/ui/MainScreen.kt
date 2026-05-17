@@ -104,10 +104,15 @@ fun MainScreen(repository: LlmRepository, settingsRepository: SettingsRepository
                         coroutineScope.launch {
                             loadingState.value = true
                             statusState.value = "Генерация урока..."
-                            lessonState.value = repository.generateLesson(topicState.value)
-                            progressState.value = repository.loadProgress().map { it.summary }
-                            statusState.value = "Урок готов"
-                            loadingState.value = false
+                            try {
+                                lessonState.value = repository.generateLesson(topicState.value)
+                                progressState.value = repository.loadProgress().map { it.summary }
+                                statusState.value = "Урок готов"
+                            } catch (e: Exception) {
+                                statusState.value = "Ошибка: ${e.message?.take(120) ?: "неизвестная"}"
+                            } finally {
+                                loadingState.value = false
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth()

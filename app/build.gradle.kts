@@ -82,6 +82,8 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:${retrofitVersion}")
     implementation("com.squareup.okhttp3:okhttp:${okhttpVersion}")
 
+    testImplementation("junit:junit:4.13.2")
+
     debugImplementation("androidx.compose.ui:ui-tooling:${composeVersion}")
     debugImplementation("androidx.compose.ui:ui-test-manifest:${composeVersion}")
 }

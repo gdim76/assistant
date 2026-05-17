@@ -53,3 +53,6 @@ obj/
 # Misc
 *.swp
 *~
+
+# Local install script
+install_debug.sh
