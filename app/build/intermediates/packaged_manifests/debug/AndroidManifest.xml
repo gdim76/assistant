@@ -26,7 +26,8 @@
         android:theme="@style/Theme.HebrewAssistant" >
         <activity
             android:name="com.example.hebrewassistant.MainActivity"
-            android:exported="true" >
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

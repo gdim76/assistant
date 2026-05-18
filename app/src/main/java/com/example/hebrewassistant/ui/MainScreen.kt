@@ -1,6 +1,7 @@
 package com.example.hebrewassistant.ui
 
 import android.app.Activity
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
@@ -37,7 +40,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.hebrewassistant.data.ChatMessage
 import com.example.hebrewassistant.data.SettingsRepository
@@ -56,6 +64,9 @@ fun MainScreen(repository: LlmRepository, settingsRepository: SettingsRepository
     val showSettings = remember { mutableStateOf(value = false) }
     val menuExpanded = remember { mutableStateOf(value = false) }
 
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     val context = LocalContext.current
     val activity = context as? Activity
     val voiceManager = remember { activity?.let { VoiceInputManager(it) } }
@@ -73,6 +84,11 @@ fun MainScreen(repository: LlmRepository, settingsRepository: SettingsRepository
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
+    }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboardController?.show()
     }
 
     fun sendMessage(text: String) {
@@ -184,9 +200,17 @@ fun MainScreen(repository: LlmRepository, settingsRepository: SettingsRepository
                     OutlinedTextField(
                         value = inputText.value,
                         onValueChange = { inputText.value = it },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequester)
+                            .clickable {
+                                focusRequester.requestFocus()
+                                keyboardController?.show()
+                            },
                         placeholder = { Text("Введите сообщение...") },
-                        maxLines = 3
+                        maxLines = 3,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { sendMessage(inputText.value) })
                     )
 
                     IconButton(
