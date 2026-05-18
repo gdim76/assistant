@@ -6,9 +6,11 @@ class LlmServiceFactory {
             return MockLlmService()
         }
 
-        return when (provider) {
+        val service = when (provider) {
             LlmProvider.GEMINI -> GeminiLlmService(apiKey)
             LlmProvider.OPENAI -> OpenAiLlmService(apiKey)
         }
+
+        return RetryingLlmService(service)
     }
 }

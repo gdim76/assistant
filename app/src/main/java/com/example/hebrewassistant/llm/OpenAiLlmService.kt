@@ -33,7 +33,7 @@ class OpenAiLlmService(
         client.newCall(httpRequest).execute().use { response ->
             val rawBody = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                throw IllegalStateException("LLM request failed: ${response.code} $rawBody")
+                throw LlmRequestException("LLM request failed: ${response.code} $rawBody", response.code)
             }
 
             val json = JSONObject(rawBody)

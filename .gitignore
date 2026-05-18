@@ -1,7 +1,8 @@
 # Gradle
-.gradle/
+.gradle/*
 build/
 **/build/
+.gradle/
 
 # Local configuration
 local.properties
@@ -53,3 +54,6 @@ obj/
 # Misc
 *.swp
 *~
+
+# Local install script
+install_debug.sh

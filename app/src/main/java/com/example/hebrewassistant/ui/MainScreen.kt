@@ -1,78 +1,123 @@
 package com.example.hebrewassistant.ui
 
+import android.app.Activity
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.example.hebrewassistant.data.LlmSettings
+import com.example.hebrewassistant.data.ChatMessage
 import com.example.hebrewassistant.data.SettingsRepository
 import com.example.hebrewassistant.llm.LlmRepository
-import com.example.hebrewassistant.llm.LlmResponse
+import com.example.hebrewassistant.voice.VoiceInputManager
+import com.example.hebrewassistant.voice.VoiceRecognitionListener
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(repository: LlmRepository, settingsRepository: SettingsRepository) {
     val coroutineScope = rememberCoroutineScope()
-    val topicState = remember { mutableStateOf("Составь урок по базовой грамматике иврита") }
-    val lessonState = remember { mutableStateOf<LlmResponse?>(null) }
-    val progressState = remember { mutableStateOf(listOf<String>()) }
-    val statusState = remember { mutableStateOf("Готов к работе") }
-    val loadingState = remember { mutableStateOf(false) }
-    val showVoicePractice = remember { mutableStateOf(false) }
-    val showSettings = remember { mutableStateOf(false) }
-    val menuExpanded = remember { mutableStateOf(false) }
-    val recognizedSpeech = remember { mutableStateOf("") }
-    val settings by settingsRepository.settingsFlow.collectAsState(initial = LlmSettings())
+    val messages = remember { mutableStateListOf<ChatMessage>() }
+    val inputText = remember { mutableStateOf("") }
+    val loadingState = remember { mutableStateOf(value = false) }
+    val showSettings = remember { mutableStateOf(value = false) }
+    val menuExpanded = remember { mutableStateOf(value = false) }
+
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val voiceManager = remember { activity?.let { VoiceInputManager(it) } }
+    val listening = remember { mutableStateOf(value = false) }
+
+    val listState = rememberLazyListState()
+
+    DisposableEffect(voiceManager) {
+        onDispose {
+            voiceManager?.destroy()
+        }
+    }
+
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
 
     LaunchedEffect(Unit) {
-        progressState.value = repository.loadProgress().map { it.summary }
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
+    fun sendMessage(text: String) {
+        if (text.isBlank()) return
+        messages.add(ChatMessage(text, isUser = true))
+        inputText.value = ""
+        coroutineScope.launch {
+            loadingState.value = true
+            try {
+                val response = repository.chat(text)
+                messages.add(ChatMessage(response.output, isUser = false))
+            } catch (e: Exception) {
+                messages.add(ChatMessage("Ошибка: ${e.message}", isUser = false))
+            } finally {
+                loadingState.value = false
+            }
+        }
     }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        if (showVoicePractice.value) {
-            VoicePracticeScreen(
-                onBack = { showVoicePractice.value = false },
-                onSubmit = { text -> recognizedSpeech.value = text }
-            )
-        } else if (showSettings.value) {
+        if (showSettings.value) {
             SettingsScreen(
                 settingsRepository = settingsRepository,
                 onBack = { showSettings.value = false }
             )
         } else {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                @OptIn(ExperimentalMaterial3Api::class)
+            Column(modifier = Modifier.fillMaxSize()) {
                 TopAppBar(
-                    title = { Text(text = "Помощник по изучению иврита", style = MaterialTheme.typography.titleLarge) },
+                    title = { Text(text = "Иврит Ассистент", style = MaterialTheme.typography.titleLarge) },
                     actions = {
                         IconButton(onClick = { menuExpanded.value = true }) {
                             Icon(imageVector = Icons.Filled.Settings, contentDescription = "Настройки")
@@ -82,60 +127,127 @@ fun MainScreen(repository: LlmRepository, settingsRepository: SettingsRepository
                             expanded = menuExpanded.value,
                             onDismissRequest = { menuExpanded.value = false }
                         ) {
-                            DropdownMenuItem(text = { Text("Настройка LLM") }, onClick = {
-                                menuExpanded.value = false
-                                showSettings.value = true
-                            })
+                            DropdownMenuItem(
+                                text = { Text("Настройка LLM") },
+                                onClick = {
+                                    menuExpanded.value = false
+                                    showSettings.value = true
+                                }
+                            )
                         }
                     }
                 )
 
-                Text(text = "Текущий провайдер: ${settings.provider.name}")
-
-                OutlinedTextField(
-                    value = topicState.value,
-                    onValueChange = { topicState.value = it },
-                    label = { Text("Тема урока") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            loadingState.value = true
-                            statusState.value = "Генерация урока..."
-                            lessonState.value = repository.generateLesson(topicState.value)
-                            progressState.value = repository.loadProgress().map { it.summary }
-                            statusState.value = "Урок готов"
-                            loadingState.value = false
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Сгенерировать задание")
+                    items(messages) { message ->
+                        ChatBubble(message)
+                    }
+                    if (loadingState.value) {
+                        item {
+                            CircularProgressIndicator(modifier = Modifier.padding(8.dp))
+                        }
+                    }
                 }
 
-                TextButton(onClick = { showVoicePractice.value = true }) {
-                    Text("Перейти к голосовой практике")
-                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    IconButton(
+                        onClick = {
+                            if (listening.value) {
+                                voiceManager?.stopListening()
+                                listening.value = false
+                            } else {
+                                voiceManager?.startListening(object : VoiceRecognitionListener {
+                                    override fun onReady() {
+                                        listening.value = true
+                                    }
 
-                if (loadingState.value) {
-                    CircularProgressIndicator()
-                }
+                                    override fun onEndOfSpeech() {
+                                        listening.value = false
+                                    }
 
-                Text(text = "Статус: ${statusState.value}")
-                lessonState.value?.let { lesson ->
-                    Text(text = lesson.output, style = MaterialTheme.typography.bodyLarge)
-                }
+                                    override fun onResult(text: String) {
+                                        inputText.value = text
+                                        sendMessage(text)
+                                    }
 
-                Text(text = "Распознанная речь:")
-                Text(text = recognizedSpeech.value, style = MaterialTheme.typography.bodyMedium)
+                                    override fun onError(errorCode: Int) {
+                                        listening.value = false
+                                    }
+                                })
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (listening.value) Icons.Filled.MicOff else Icons.Filled.Mic,
+                            contentDescription = "Голосовой ввод",
+                            tint = if (listening.value) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        )
+                    }
 
-                Text(text = "Последние сохраненные задания:")
-                progressState.value.take(3).forEach { summary ->
-                    Text(text = summary, style = MaterialTheme.typography.bodyMedium)
+                    OutlinedTextField(
+                        value = inputText.value,
+                        onValueChange = { inputText.value = it },
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequester)
+                            .clickable {
+                                focusRequester.requestFocus()
+                                keyboardController?.show()
+                            },
+                        placeholder = { Text("Введите сообщение...") },
+                        maxLines = 3,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { sendMessage(inputText.value) })
+                    )
+
+                    IconButton(
+                        onClick = { sendMessage(inputText.value) },
+                        enabled = inputText.value.isNotBlank() && !loadingState.value
+                    ) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = "Отправить")
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ChatBubble(message: ChatMessage) {
+    val alignment = if (message.isUser) Alignment.End else Alignment.Start
+    val color = if (message.isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
+    val textColor = if (message.isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+    val shape = if (message.isUser) {
+        RoundedCornerShape(12.dp, 12.dp, 0.dp, 12.dp)
+    } else {
+        RoundedCornerShape(12.dp, 12.dp, 12.dp, 0.dp)
+    }
+
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = alignment) {
+        Surface(
+            color = color,
+            shape = shape,
+            modifier = Modifier.widthIn(max = 300.dp)
+        ) {
+            Text(
+                text = message.text,
+                modifier = Modifier.padding(8.dp),
+                style = MaterialTheme.typography.bodyLarge,
+                color = textColor
+            )
         }
     }
 }

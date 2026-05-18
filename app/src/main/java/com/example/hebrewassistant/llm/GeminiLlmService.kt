@@ -27,7 +27,7 @@ class GeminiLlmService(private val apiKey: String) : LlmService {
         client.newCall(httpRequest).execute().use { response ->
             val rawBody = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                throw IllegalStateException("Gemini request failed: ${response.code} $rawBody")
+                throw LlmRequestException("Gemini request failed: ${response.code} $rawBody", response.code)
             }
             val json = JSONObject(rawBody)
             val candidate = json

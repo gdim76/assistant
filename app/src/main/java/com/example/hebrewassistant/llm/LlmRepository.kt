@@ -29,4 +29,11 @@ class LlmRepository(
     suspend fun loadProgress(): List<LessonProgress> {
         return progressDao.getAll()
     }
+
+    suspend fun chat(message: String): LlmResponse {
+        val settings = settingsRepository.settingsFlow.first()
+        val service = serviceFactory.create(settings.provider, settings.apiKey)
+        val prompt = LlmPromptTemplates.buildChatPrompt(message)
+        return service.requestCompletion(LlmRequest(prompt))
+    }
 }
