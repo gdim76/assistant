@@ -87,6 +87,9 @@ fun MainScreen(repository: LlmRepository, settingsRepository: SettingsRepository
     }
 
     LaunchedEffect(Unit) {
+        if (messages.isEmpty()) {
+            messages.add(ChatMessage(repository.initialAssistantMessage(), isUser = false))
+        }
         focusRequester.requestFocus()
         keyboardController?.show()
     }

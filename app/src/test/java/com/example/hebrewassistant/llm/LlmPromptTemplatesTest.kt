@@ -33,4 +33,25 @@ class LlmPromptTemplatesTest {
 
         assertTrue("Prompt should return starter prompt for empty progress", prompt.contains("Пользователь только начинает"))
     }
+
+    @Test
+    fun `buildOnboardingPrompt includes structured profile contract`() {
+        val prompt = LlmPromptTemplates.buildOnboardingPrompt("Меня зовут Дима", profile = null)
+
+        assertTrue("Prompt should include onboarding scenario", prompt.contains("первый чат-сценарий"))
+        assertTrue("Prompt should include profile marker", prompt.contains("<student_profile>"))
+        assertTrue("Prompt should request placement test", prompt.contains("10-15 вопросов"))
+    }
+
+    @Test
+    fun `extractStudentProfileJson returns json and strip removes marker`() {
+        val response = "Готово.\n<student_profile>{\"name\":\"Дима\"}</student_profile>"
+
+        val json = LlmPromptTemplates.extractStudentProfileJson(response)
+        val stripped = LlmPromptTemplates.stripStudentProfileBlock(response)
+
+        assertTrue("JSON should be extracted", json == "{\"name\":\"Дима\"}")
+        assertTrue("Marker should be removed", !stripped.contains("<student_profile>"))
+        assertTrue("Visible response should remain", stripped == "Готово.")
+    }
 }

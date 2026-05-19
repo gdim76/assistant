@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.example.hebrewassistant.data.ProgressDatabase
 import com.example.hebrewassistant.data.SettingsRepository
+import com.example.hebrewassistant.data.StudentProfileRepository
 import com.example.hebrewassistant.llm.LlmRepository
 import com.example.hebrewassistant.llm.LlmServiceFactory
 import com.example.hebrewassistant.ui.MainScreen
@@ -15,12 +16,16 @@ class MainActivity : ComponentActivity() {
         ProgressDatabase.getDatabase(applicationContext).lessonProgressDao()
     }
 
+    private val studentProfileRepository by lazy {
+        StudentProfileRepository(ProgressDatabase.getDatabase(applicationContext).studentProfileDao())
+    }
+
     private val settingsRepository by lazy {
         SettingsRepository(applicationContext)
     }
 
     private val llmRepository by lazy {
-        LlmRepository(LlmServiceFactory(), settingsRepository, progressDao)
+        LlmRepository(LlmServiceFactory(), settingsRepository, progressDao, studentProfileRepository)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
