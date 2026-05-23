@@ -43,7 +43,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -87,6 +86,9 @@ fun MainScreen(repository: LlmRepository, settingsRepository: SettingsRepository
     }
 
     LaunchedEffect(Unit) {
+        if (messages.isEmpty()) {
+            messages.add(ChatMessage(repository.initialAssistantMessage(), isUser = false))
+        }
         focusRequester.requestFocus()
         keyboardController?.show()
     }
@@ -98,7 +100,7 @@ fun MainScreen(repository: LlmRepository, settingsRepository: SettingsRepository
         coroutineScope.launch {
             loadingState.value = true
             try {
-                val response = repository.chat(text)
+                val response = repository.chat(text, messages.toList())
                 messages.add(ChatMessage(response.output, isUser = false))
             } catch (e: Exception) {
                 messages.add(ChatMessage("Ошибка: ${e.message}", isUser = false))
@@ -132,6 +134,23 @@ fun MainScreen(repository: LlmRepository, settingsRepository: SettingsRepository
                                 onClick = {
                                     menuExpanded.value = false
                                     showSettings.value = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Завершить урок") },
+                                onClick = {
+                                    menuExpanded.value = false
+                                    coroutineScope.launch {
+                                        loadingState.value = true
+                                        try {
+                                            val response = repository.finishCurrentLesson()
+                                            messages.add(ChatMessage(response.output, isUser = false))
+                                        } catch (e: Exception) {
+                                            messages.add(ChatMessage("Ошибка: ${e.message}", isUser = false))
+                                        } finally {
+                                            loadingState.value = false
+                                        }
+                                    }
                                 }
                             )
                         }

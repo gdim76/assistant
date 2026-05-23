@@ -9,7 +9,6 @@ local.properties
 
 # Kotlin
 *.kotlin_module
-*.kts
 
 # Android Studio
 .idea/
